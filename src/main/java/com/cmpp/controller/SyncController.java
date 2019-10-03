@@ -20,6 +20,7 @@ public class SyncController {
     @RequestMapping("do")
     public String sync() {
         syncService.syncAppInfoToRedis();
+        syncService.syncChannelToRedis();
         return "success";
     }
 }

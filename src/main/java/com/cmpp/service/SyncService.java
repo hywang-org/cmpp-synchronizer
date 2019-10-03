@@ -90,7 +90,7 @@ public class SyncService {
             map.put(PROTOCOL_TYPE, String.valueOf(app.getProtocolType()));
             map.put(CALLBACK_URL, app.getCallbackUrl());
             map.put(APP_STATUS, String.valueOf(app.getAppStatus()));
-            map.put(EXTEND_CODE, app.getExtendcode());
+            map.put(EXTEND_CODE, app.getExtendCode());
             map.put(SPEED_LIMIT, String.valueOf(app.getSpeedLimit()));
             map.put(SEND_BEGIN_TIME, String.valueOf(app.getSendBeginTime()));
             map.put(SEND_END_TIME, String.valueOf(app.getSendEndTime()));
