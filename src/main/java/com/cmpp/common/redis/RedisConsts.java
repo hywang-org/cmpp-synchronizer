@@ -12,6 +12,7 @@ public class RedisConsts {
     public static final String SEND_END_TIME = "send_end_time";
     public static final String CHANNEL = "channel";
     public static final String MODULE_ID = "module_id";
+    public static final String MAX_CONNECTION = "max_connection";
     public static final String TOTAL_NUM = "total_num";
     public static final String USED_NUM = "used_num";
     public static final String APP_SECRET = "app_secret";

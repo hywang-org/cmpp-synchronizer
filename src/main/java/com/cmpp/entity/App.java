@@ -82,6 +82,9 @@ public class App {
      */
     private String channel;
 
+    @Column(name = "max_connection")
+    private int maxConnection;
+
     /**
      * 创建时间
      */
@@ -405,5 +408,21 @@ public class App {
      */
     public void setUpdatedDate(Date updatedDate) {
         this.updatedDate = updatedDate;
+    }
+
+    public String getExtendCode() {
+        return extendCode;
+    }
+
+    public void setExtendCode(String extendCode) {
+        this.extendCode = extendCode;
+    }
+
+    public int getMaxConnection() {
+        return maxConnection;
+    }
+
+    public void setMaxConnection(int maxConnection) {
+        this.maxConnection = maxConnection;
     }
 }

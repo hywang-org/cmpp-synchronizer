@@ -4,9 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.cmpp.common.JsonBuilder;
 import com.cmpp.common.redis.AppInfoRedis;
-import com.cmpp.entity.App;
-import com.cmpp.entity.Module;
-import com.cmpp.entity.ProSecret;
+import com.cmpp.entity.*;
 import com.cmpp.service.dao.SyncDao;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
@@ -33,24 +31,49 @@ public class SyncService {
     /**
      * 最新的一条数据的更新时间
      */
-    private Date newestAppUpdateTime = null;
-    private Date newestModuleUpdateTime = null;
-    private Date newestConsumptionUpdateTime = null;
-    private Date newestSecretUpdateTime = null;
-
-    private Date tempAppUpdateTime = null;
-    private Date tempModuleUpdateTime = null;
-    private Date tempConsumptionUpdateTime = null;
-    private Date tempSecretUpdateTime = null;
-
-
-    public void syncAppInfo2Redis() {
+    public void syncAppInfoToRedis() {
         this.syncApps();
         this.syncModules();
         this.syncSecret();
-        newestSecretUpdateTime = tempSecretUpdateTime;
-        newestModuleUpdateTime = tempModuleUpdateTime;
-        newestAppUpdateTime = tempAppUpdateTime;
+        this.syncConsumption();
+    }
+
+    private void syncConsumption() {
+        List<Consumption> consumptions = syncDao.find("from Consumption");
+        if (CollectionUtils.isEmpty(consumptions)) {
+            return;
+        }
+        for (Consumption consumption : consumptions) {
+            Map<String, String> map = new HashMap<>(2);
+            map.put(TOTAL_NUM, String.valueOf(consumption.getTotalNum()));
+            map.put(USED_NUM, String.valueOf(consumption.getUsedNum()));
+            appInfoRedis.hset(consumption.getAppId(), map);
+        }
+    }
+
+    /**
+     * 同步channel信息到redis
+     */
+    public void syncChannelToRedis() {
+        List<Channel> channels = this.selectChannels();
+        if (CollectionUtils.isEmpty(channels)) {
+            return;
+        }
+        for (Channel channel : channels) {
+            Map<String, String> map = new HashMap<>();
+            map.put(SP_NAME, channel.getSpName());
+            map.put(SP_TYPE, String.valueOf(channel.getSpType()));
+            map.put(SP_STATUS, String.valueOf(channel.getSpStatus()));
+            map.put(SP_IP, channel.getSpIp());
+            map.put(SP_PORT, String.valueOf(channel.getSpPort()));
+            map.put(LOGIN_NAME, channel.getSpLoginName());
+            map.put(LOGIN_PWD, channel.getSpLoginPwd());
+            appInfoRedis.hset(channel.getSpId(), map);
+        }
+    }
+
+    private List<Channel> selectChannels() {
+        return syncDao.find("from Channel");
     }
 
     /**
@@ -63,9 +86,6 @@ public class SyncService {
         }
         for (App app : apps) {
             Map<String, String> map = new HashMap<>();
-            if (newestAppUpdateTime == null || newestAppUpdateTime.before(app.getUpdatedDate())) {
-                tempAppUpdateTime = app.getUpdatedDate();
-            }
             map.put(USER_ID, app.getUserId());
             map.put(PROTOCOL_TYPE, String.valueOf(app.getProtocolType()));
             map.put(CALLBACK_URL, app.getCallbackUrl());
@@ -75,6 +95,7 @@ public class SyncService {
             map.put(SEND_BEGIN_TIME, String.valueOf(app.getSendBeginTime()));
             map.put(SEND_END_TIME, String.valueOf(app.getSendEndTime()));
             map.put(CHANNEL, app.getChannel());
+            map.put(MAX_CONNECTION, String.valueOf(app.getMaxConnection()));
             appInfoRedis.hset(app.getAppId(), map);
         }
     }
@@ -87,11 +108,6 @@ public class SyncService {
         if (CollectionUtils.isEmpty(modules)) {
             return;
         }
-        for (Module module : modules) {
-            if (newestModuleUpdateTime == null || newestModuleUpdateTime.before(module.getUpdatedDate())) {
-                tempModuleUpdateTime = module.getUpdatedDate();
-            }
-        }
         Map<String, List<Module>> appId2Modules = modules.stream().collect(Collectors.groupingBy(Module::getAppId));
         for (Map.Entry<String, List<Module>> appId2Module : appId2Modules.entrySet()) {
             List<Object> moduleJsonList = new ArrayList<>();
@@ -103,7 +119,6 @@ public class SyncService {
                         .json(MODULE_STATUS, tempModule.getModStatus())
                         .build();
                 moduleJsonList.add(moduleJson);
-
             }
             map.put(MODULE_ID, JSON.toJSONString(moduleJsonList));
             appInfoRedis.hset(appId2Module.getKey(), map);
@@ -116,19 +131,14 @@ public class SyncService {
             return;
         }
         for (ProSecret proSecret : proSecrets) {
-            if (newestSecretUpdateTime == null || newestSecretUpdateTime.before(proSecret.getUpdatedDate())) {
-                tempSecretUpdateTime = proSecret.getUpdatedDate();
-            }
-            appInfoRedis.hset(proSecret.getAppId(), "app_secret", proSecret.getAppSecret());
+            appInfoRedis.hset(proSecret.getAppId(), APP_SECRET, proSecret.getAppSecret());
         }
     }
 
     private List<ProSecret> selectProSecrets() {
-        if (newestSecretUpdateTime == null) {
-            return syncDao.find("from ProSecret");
-        }
-        return syncDao.find("from ProSecret where updatedDate>?", newestSecretUpdateTime);
+        return syncDao.find("from ProSecret");
     }
+
 
     /**
      * 同步重置信息到redis
@@ -146,17 +156,10 @@ public class SyncService {
      * @return app列表
      */
     private List<App> selectNewApps() {
-        if (newestAppUpdateTime == null) {
-            return syncDao.find("from App");
-        }
-        return syncDao.find("from App where updatedDate>?", newestAppUpdateTime);
+        return syncDao.find("from App");
     }
 
     private List<Module> selectModules() {
-        if (newestModuleUpdateTime == null) {
-            return syncDao.find("from Module");
-        }
-        return syncDao.find("from Module where updatedDate>?", newestModuleUpdateTime);
+        return syncDao.find("from Module");
     }
-
 }
