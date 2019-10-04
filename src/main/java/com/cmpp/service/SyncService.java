@@ -6,7 +6,10 @@ import com.cmpp.common.JsonBuilder;
 import com.cmpp.common.redis.AppInfoRedis;
 import com.cmpp.entity.*;
 import com.cmpp.service.dao.SyncDao;
-import org.springframework.context.annotation.DependsOn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -21,21 +24,40 @@ import static com.cmpp.common.redis.RedisConsts.*;
  * 日期： 2019/10/2 11:34
  */
 @Service
-public class SyncService {
+public class SyncService implements InitializingBean {
 
     @Resource
     private SyncDao syncDao;
     @Resource
     private AppInfoRedis appInfoRedis;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SyncService.class);
+
     /**
      * 最新的一条数据的更新时间
      */
     public void syncAppInfoToRedis() {
+        LOGGER.info("sync app info to redis start");
         this.syncApps();
         this.syncModules();
         this.syncSecret();
         this.syncConsumption();
+        LOGGER.info("sync app info to redis end");
+    }
+
+    @Scheduled(fixedRate = 5000)
+    public void syncConsumptionToDB() {
+        List<Consumption> consumptions = syncDao.find("from Consumption");
+        if (CollectionUtils.isEmpty(consumptions)) {
+            return;
+        }
+        for (Consumption consumption : consumptions) {
+            Object o = appInfoRedis.hGetValue(consumption.getAppId(), USED_NUM);
+            if (o != null) {
+                int usedNum = Integer.parseInt((String) o);
+                syncDao.bulkUpdateBySQL("update tbl_consumption set used_num = ? where app_id = ?", usedNum, consumption.getAppId());
+            }
+        }
     }
 
     private void syncConsumption() {
@@ -80,7 +102,7 @@ public class SyncService {
      * 同步app信息到redis
      */
     private void syncApps() {
-        List<App> apps = selectNewApps();
+        List<App> apps = selectApps();
         if (CollectionUtils.isEmpty(apps)) {
             return;
         }
@@ -139,27 +161,21 @@ public class SyncService {
         return syncDao.find("from ProSecret");
     }
 
-
-    /**
-     * 同步重置信息到redis
-     */
- /*   private void syncConsumption() {
-        if (newestConsumptionUpdateTime == null) {
-            return syncDao.find("from App");
-        }
-        return syncDao.find("from App where updatedDate>?", newestConsumptionUpdateTime);
-    }*/
-
     /**
      * 查询需要更新的app信息
      *
      * @return app列表
      */
-    private List<App> selectNewApps() {
+    private List<App> selectApps() {
         return syncDao.find("from App");
     }
 
     private List<Module> selectModules() {
         return syncDao.find("from Module");
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        syncAppInfoToRedis();
     }
 }
