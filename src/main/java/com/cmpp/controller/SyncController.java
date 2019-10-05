@@ -43,6 +43,15 @@ public class SyncController {
         return "success";
     }
 
+    @RequestMapping("getConn")
+    public String getConn() {
+        String connection = loadFileContent("lua/connection.lua");
+        System.out.println("serverId = " + connection);
+        boolean result = r3.eval(connection, Collections.singletonList("appId01"));
+        System.out.println(result);
+        return "success";
+    }
+
     private String loadFileContent(String resourcePath) {
         try {
             File file = new ClassPathResource(resourcePath).getFile();
