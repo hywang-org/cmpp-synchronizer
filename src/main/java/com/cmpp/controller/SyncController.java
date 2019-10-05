@@ -34,19 +34,27 @@ public class SyncController {
         return "success";
     }
 
+    /**
+     * 扣量
+     *
+     * @return
+     */
     @RequestMapping("deduction")
     public String deduction() {
         String deduction = loadFileContent("lua/deduction.lua");
-        System.out.println("serverId = " + deduction);
         boolean result = r3.eval(deduction, Collections.singletonList("appId01"), "1");
         System.out.println(result);
         return "success";
     }
 
+    /**
+     * 连接数限制
+     *
+     * @return
+     */
     @RequestMapping("getConn")
     public String getConn() {
         String connection = loadFileContent("lua/connection.lua");
-        System.out.println("serverId = " + connection);
         boolean result = r3.eval(connection, Collections.singletonList("appId01"));
         System.out.println(result);
         return "success";
