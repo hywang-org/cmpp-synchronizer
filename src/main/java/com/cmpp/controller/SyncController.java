@@ -55,7 +55,7 @@ public class SyncController {
     @RequestMapping("getConn")
     public String getConn() {
         String connection = loadFileContent("lua/connection.lua");
-        boolean result = r3.eval(connection, Collections.singletonList("appId01"));
+        boolean result = r3.eval(connection, Collections.singletonList("appId01"), "1");
         System.out.println(result);
         return "success";
     }
